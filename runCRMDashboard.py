@@ -7,7 +7,7 @@ from pathlib import Path
 # === 1. Paths ===
 BASE_DIR = Path("C:/Users/anish/PycharmProjects/CRM_Dashboard")
 REACT_DIR = BASE_DIR / "crm_dashboard"
-JSON_SOURCE = Path("C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json")
+JSON_SOURCE = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json")
 JSON_DEST = REACT_DIR / "public" / "merged_clean_data.json"
 shutil.copy(JSON_SOURCE, JSON_DEST)
 

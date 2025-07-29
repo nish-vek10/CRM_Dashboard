@@ -6,9 +6,9 @@ from time import sleep
 import numpy as np
 
 # === Config ===
-INPUT_JSON = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json"
-OUTPUT_JSON = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.json"
-OUTPUT_XLSX = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.xlsx"
+INPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json"
+OUTPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.json"
+OUTPUT_XLSX = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.xlsx"
 
 API_URL = "https://restapi-real3.sirixtrader.com/api/UserStatus/GetUserTransactions"
 TOKEN = "t1_a7xeQOJPnfBzuCncH60yjLFu"

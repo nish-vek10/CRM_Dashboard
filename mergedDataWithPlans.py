@@ -2,9 +2,9 @@ import pandas as pd
 import json
 
 # === 1. Load the existing JSON data ===
-INPUT_PATH = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json"
-OUTPUT_JSON = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_data_with_plans.json"
-OUTPUT_EXCEL = "C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_data_with_plans.xlsx"
+INPUT_PATH = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json"
+OUTPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_with_plans.json"
+OUTPUT_EXCEL = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_with_plans.xlsx"
 
 df = pd.read_json(INPUT_PATH)
 

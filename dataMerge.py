@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 
 # === 1. Input Paths ===
-data_dir = Path("C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard")
+data_dir = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard")
 
 file_tpaccount = data_dir / "Lv_tpaccount.xlsx"
 file_transaction = data_dir / "Lv_monetarytransaction.xlsx"

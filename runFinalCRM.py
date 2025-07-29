@@ -8,7 +8,7 @@ import time
 # === Paths ===
 BASE_DIR = Path("C:/Users/anish/PycharmProjects/CRM_Dashboard")
 REACT_DIR = BASE_DIR / "crm_dashboard"
-JSON_SOURCE = Path("C:/Users/anish/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.json")
+JSON_SOURCE = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.json")
 JSON_DEST = REACT_DIR / "public" / "merged_data_full_enriched.json"
 
 # === Ensure React App Exists ===
@@ -26,6 +26,21 @@ APP_JS = REACT_DIR / "src" / "App.js"
 APP_JS.write_text("""\
 import React, { useEffect, useState } from "react";
 import "./App.css";
+
+// === Font Face for Aptos Display (local) ===
+const addAptosFont = () => {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @font-face {
+      font-family: 'Aptos Display';
+      src: url('/fonts/AptosDisplay.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+  `;
+  document.head.appendChild(style);
+};
+addAptosFont();
 
 // Column definitions
 const COLUMNS = [
@@ -56,52 +71,17 @@ const SORT_OPTIONS = [
   { label: "Country", key: "lv_countryidName" }
 ];
 
-// === Helper: Convert country name to ISO code and return flag image ===
 function getFlagImage(countryName) {
   const countryMap = {
-    "Albania": "al",
-    "Australia": "au",
-    "Bahrain": "bh",
-    "Bangladesh": "bd",
-    "Benin": "bj",
-    "Botswana": "bw",
-    "Burkina Faso": "bf",
-    "Burundi": "bi",
-    "Cameroon": "cm",
-    "Canada": "ca",
-    "Colombia": "co",
-    "Cote D'Ivoire": "ci",
-    "Cyprus": "cy",
-    "Egypt": "eg",
-    "Ethiopia": "et",
-    "France": "fr",
-    "Germany": "de",
-    "Ghana": "gh",
-    "India": "in",
-    "Ireland": "ie",
-    "Israel": "il",
-    "Jordan": "jo",
-    "Kenya": "ke",
-    "Lesotho": "ls",
-    "Malaysia": "my",
-    "Malta": "mt",
-    "Nepal": "np",
-    "Netherlands": "nl",
-    "Nigeria": "ng",
-    "Pakistan": "pk",
-    "Saudi Arabia": "sa",
-    "Senegal": "sn",
-    "Singapore": "sg",
-    "Somalia": "so",
-    "South Africa": "za",
-    "Spain": "es",
-    "Swaziland": "sz",  // Now officially "Eswatini", but ISO code "SZ" is still used
-    "Tanzania": "tz",
-    "Uganda": "ug",
-    "United Arab Emirates": "ae",
-    "United Kingdom": "gb",
-    "Uzbekistan": "uz",
-    "Zambia": "zm",
+    "Albania": "al", "Australia": "au", "Bahrain": "bh", "Bangladesh": "bd", "Benin": "bj",
+    "Botswana": "bw", "Burkina Faso": "bf", "Burundi": "bi", "Cameroon": "cm", "Canada": "ca",
+    "Colombia": "co", "Cote D'Ivoire": "ci", "Cyprus": "cy", "Egypt": "eg", "Ethiopia": "et",
+    "France": "fr", "Germany": "de", "Ghana": "gh", "India": "in", "Ireland": "ie",
+    "Israel": "il", "Jordan": "jo", "Kenya": "ke", "Lesotho": "ls", "Malaysia": "my",
+    "Malta": "mt", "Nepal": "np", "Netherlands": "nl", "Nigeria": "ng", "Pakistan": "pk",
+    "Saudi Arabia": "sa", "Senegal": "sn", "Singapore": "sg", "Somalia": "so",
+    "South Africa": "za", "Spain": "es", "Swaziland": "sz", "Tanzania": "tz", "Uganda": "ug",
+    "United Arab Emirates": "ae", "United Kingdom": "gb", "Uzbekistan": "uz", "Zambia": "zm",
     "Zimbabwe": "zw"
   };
 
@@ -138,7 +118,6 @@ function App() {
       .catch(console.error);
   }, []);
 
-  // === Sorting ===
   const handleSort = (key) => {
     setSortKey(key);
     const sorted = [...data].sort((a, b) => {
@@ -157,7 +136,6 @@ function App() {
     setCurrentPage(1);
   };
 
-  // === Search ===
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
@@ -183,31 +161,107 @@ function App() {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ marginBottom: "10px" }}>CRM Dashboard</h1>
-      <p>Total Records: {data.length}</p>
+    <div style={{ padding: "20px", fontFamily: "'Segoe UI', sans-serif", background: "#fafafa" }}>
+    <h1
+  className="heading-slide-fade"
+  style={{
+    fontSize: "3.5rem",
+    fontWeight: "800",
+    marginBottom: "10px",
+    fontFamily: "'Aptos Display', 'Segoe UI', sans-serif",
+    color: "#1a1a1a",
+    letterSpacing: "0.7px",
+    textAlign: "center",
+    textTransform: "uppercase",
+    lineHeight: "1.2"
+  }}
+>
+  CRM Dashboard
+</h1>
+      <p
+        style={{
+          fontSize: "1rem",
+          marginBottom: "20px",
+          textAlign: "center",
+          color: "#666"
+        }}
+      >
+        Total Records: {data.length}
+      </p>
 
-      <div style={{ marginBottom: "15px", display: "flex", gap: "10px", alignItems: "center" }}>
+      <div style={{ marginBottom: "20px", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center",
+       justifyContent: "center" }}>
         <input
           type="text"
           placeholder="Search..."
           value={searchQuery}
           onChange={handleSearch}
-          style={{ padding: "5px", width: "200px" }}
+          style={{ 
+            padding: "10px 14px", 
+            width: "220px", 
+            border: "1px solid #ccc", 
+            borderRadius: "6px",
+            fontSize: "14px",
+            fontFamily: "'Segoe UI', sans-serif",
+            boxShadow: "1px 1px 5px rgba(0,0,0,0.05)",
+            outline: "none"
+          }}
         />
-        <select onChange={(e) => handleSort(e.target.value)} value={sortKey}>
-          <option value="">Sort By</option>
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.key} value={opt.key}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <button onClick={resetSort}>Reset</button>
-      </div>
+        <select
+    onChange={(e) => handleSort(e.target.value)}
+    value={sortKey}
+    style={{
+      padding: "10px 14px",
+      border: "1px solid #ccc",
+      borderRadius: "6px",
+      fontSize: "14px",
+      fontFamily: "'Segoe UI', sans-serif",
+      boxShadow: "1px 1px 5px rgba(0,0,0,0.05)",
+      outline: "none"
+    }}
+  >
+    <option value="">Sort By</option>
+    {SORT_OPTIONS.map((opt) => (
+      <option key={opt.key} value={opt.key}>
+        {opt.label}
+      </option>
+    ))}
+  </select>
 
+  <button
+    onClick={resetSort}
+    style={{
+      padding: "10px 18px",
+      border: "none",
+      backgroundColor: "#3498db",
+      color: "#fff",
+      borderRadius: "6px",
+      fontWeight: "600",
+      fontSize: "14px",
+      fontFamily: "'Segoe UI', sans-serif",
+      cursor: "pointer",
+      boxShadow: "1px 1px 5px rgba(0,0,0,0.05)",
+      transition: "background-color 0.3s"
+    }}
+    onMouseEnter={(e) => e.target.style.backgroundColor = "#2980b9"}
+    onMouseLeave={(e) => e.target.style.backgroundColor = "#3498db"}
+  >
+    Reset
+  </button>
+</div>
       <div style={{ overflowX: "auto", maxHeight: "75vh", overflowY: "scroll" }}>
-        <table border="1" cellPadding="5" style={{ width: "100%", borderCollapse: "collapse", textAlign: "center" }}>
+        <table
+          border="1"
+          cellPadding="5"
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            textAlign: "center",
+            fontFamily: "'Aptos Display', 'Segoe UI', sans-serif",
+            fontSize: "14px",
+            background: "#fff"
+          }}
+        >
           <thead>
             <tr style={{ background: "#f0f0f0" }}>
               {COLUMNS.map((col, index) => (
@@ -230,13 +284,21 @@ function App() {
       </div>
 
       <div style={{ marginTop: "20px" }}>
-        <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+        <button
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          style={{ marginRight: "10px", padding: "6px 10px", cursor: "pointer" }}
+        >
           Prev
         </button>
         <span style={{ margin: "0 10px" }}>
           Page {currentPage} of {totalPages}
         </span>
-        <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
+        <button
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          style={{ marginLeft: "10px", padding: "6px 10px", cursor: "pointer" }}
+        >
           Next
         </button>
       </div>
