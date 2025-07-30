@@ -49,10 +49,3 @@ print(f"[OK] JSON saved to: {OUTPUT_JSON}")
 print(f"[OK] Excel saved to: {OUTPUT_EXCEL}")
 
 
-
-
-
-#       1511221655
-#       1R7$y3@?52!
-
-
