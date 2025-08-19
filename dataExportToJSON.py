@@ -5,8 +5,8 @@ from pathlib import Path
 base_path = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard")
 
 # === 2. Input/Output Files ===
-input_excel = base_path / "merged_clean_output.xlsx"
-output_json = base_path / "merged_clean_data.json"
+input_excel = base_path / "merged_clean_outputNEW.xlsx"
+output_json = base_path / "merged_clean_dataNEW.json"
 
 # === 3. Load Excel and export to JSON ===
 df = pd.read_excel(input_excel)

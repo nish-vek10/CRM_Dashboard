@@ -6,21 +6,26 @@ from time import sleep
 import numpy as np
 
 # === Config ===
-INPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_data.json"
-OUTPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.json"
-OUTPUT_XLSX = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enriched.xlsx"
+INPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_clean_dataNEW.json"
+OUTPUT_JSON = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enrichedNEW.json"
+OUTPUT_XLSX = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/merged_data_full_enrichedNEW.xlsx"
 
 API_URL = "https://restapi-real3.sirixtrader.com/api/UserStatus/GetUserTransactions"
 TOKEN = "t1_a7xeQOJPnfBzuCncH60yjLFu"
 
 # === 1. Load raw data ===
 df = pd.read_json(INPUT_JSON)
+print(f"[INFO] Loaded {len(df):,} rows from source.")
 
 # === 2. Apply filters ===
+# Keep ONLY lv_transactioncaseidName == "Deposit Approval"
+# AND exclude any Lv_TempName that contains "Purchases" (case-insensitive)
+before = len(df)
 df = df[
-    df['lv_transactioncaseidName'].str.contains('Deposit Approval', na=False) &
-    ~df['Lv_TempName'].str.contains('Purchases', na=False)
+    df['lv_transactioncaseidName'].fillna('').str.strip().eq('Deposit Approval') &
+    ~df['Lv_TempName'].fillna('').str.contains('Purchases', case=False, na=False)
 ]
+print(f"[FILTER] Deposit Approval + exclude Purchases -> {len(df):,} rows (from {before:,}).")
 
 # # Limit to first 200 for testing
 # df = df.head(200)
@@ -80,11 +85,16 @@ def fetch_balance_data(user_id):
 
     return {"Balance": None, "Equity": None, "OpenPnL": None}
 
+# Helper: pick the right ID column (Lv_name vs lv_name)
+ID_COL = 'Lv_name' if 'Lv_name' in df.columns else ('lv_name' if 'lv_name' in df.columns else None)
+if not ID_COL:
+    raise KeyError("Neither 'Lv_name' nor 'lv_name' exists in the dataset to fetch balances.")
+
 # === 5. Fetch balances from API ===
 print("[...] Fetching balances from API...")
 balance_data = []
-for idx, row in df.iterrows():
-    user_id = row.get("Lv_name")
+for _, row in df.iterrows():
+    user_id = row.get(ID_COL)
     if not user_id or pd.isna(user_id):
         balance_data.append({"Balance": None, "Equity": None, "OpenPnL": None})
         continue
@@ -112,7 +122,7 @@ date_columns = [
 for col in date_columns:
     if col in df.columns:
         if pd.api.types.is_numeric_dtype(df[col]):
-            valid = df[col] > 1000000000
+            valid = df[col] > 1000000000    # crude ms-vs-not check
             df[col] = df[col].astype('object')
             df.loc[valid, col] = pd.to_datetime(df.loc[valid, col], unit='ms', errors='coerce')
             df.loc[~valid, col] = pd.NaT
