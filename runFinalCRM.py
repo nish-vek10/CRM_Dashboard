@@ -44,31 +44,31 @@ addAptosFont();
 
 // Column definitions
 const COLUMNS = [
-  { label: "Customer Name", key: "Name" },
-  { label: "Customer ID", key: "lv_maintpaccountidName" },
-  { label: "Account ID", key: "Lv_name" },
-  { label: "Email", key: "EMailAddress1" },
-  { label: "Phone Code", key: "Lv_Phone1CountryCode" },
-  { label: "Phone Number", key: "Lv_Phone1Phone" },
+  { label: "CUSTOMER NAME", key: "Name" },
+  { label: "CUSTOMER ID", key: "lv_maintpaccountidName" },
+  { label: "ACCOUNT ID", key: "Lv_name" },
+  { label: "EMAIL", key: "EMailAddress1" },
+  { label: "PHONE CODE", key: "Lv_Phone1CountryCode" },
+  { label: "PHONE NUMBER", key: "Lv_Phone1Phone" },
   {
-    label: "Country",
+    label: "COUNTRY",
     key: "lv_countryidName",
     render: (val) => val ? getFlagImage(val) : ""
   },
-  { label: "Affiliate", key: "Lv_SubAffiliate" },
-  { label: "Tag", key: "Lv_Tag1" },
-  { label: "Plan", key: "Plan" },
-  { label: "Plan SB", key: "Plan_SB" },
-  { label: "Balance", key: "Balance" },
-  { label: "Equity", key: "Equity" },
-  { label: "OpenPnL", key: "OpenPnL" }
+  { label: "AFFILIATE", key: "Lv_SubAffiliate" },
+  { label: "TAG", key: "Lv_Tag1" },
+  { label: "PLAN", key: "Plan" },
+  { label: "PLAN SB", key: "Plan_SB" },
+  { label: "BALANCE", key: "Balance" },
+  { label: "EQUITY", key: "Equity" },
+  { label: "OPEN PnL", key: "OpenPnL" }
 ];
 
 // Sortable fields
 const SORT_OPTIONS = [
-  { label: "Customer Name", key: "Name" },
-  { label: "Customer ID", key: "lv_maintpaccountidName" },
-  { label: "Country", key: "lv_countryidName" }
+  { label: "CUSTOMER NAME", key: "Name" },
+  { label: "CUSTOMER ID", key: "lv_maintpaccountidName" },
+  { label: "COUNTRY", key: "lv_countryidName" }
 ];
 
 function getFlagImage(countryName) {
