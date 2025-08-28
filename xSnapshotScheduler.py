@@ -9,7 +9,8 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 URL = "http://localhost:3001"
 
-SCHEDULE_HOURS = [0, 4, 8, 12, 16, 20]  # local time
+# Run every 2 hours at the same minute (xx:35) -> even hours: 00, 02, 04, ..., 22
+SCHEDULE_HOURS = list(range(0, 24, 2))  # 0,2,4,6,8,10,12,14,16,18,20,22
 SCHEDULE_MINUTE = 35
 
 INITIAL_STARTUP_DELAY_SEC = 5 * 60  # 5 minutes
@@ -31,7 +32,7 @@ def seconds_until_next_run() -> int:
         t = datetime.datetime.combine(today, datetime.time(hour=h, minute=SCHEDULE_MINUTE))
         if t > now:
             return int((t - now).total_seconds())
-    # none left today -> next day 00:30
+    # none left today -> next day at first slot (00:35)
     t = datetime.datetime.combine(today + datetime.timedelta(days=1),
                                   datetime.time(hour=SCHEDULE_HOURS[0], minute=SCHEDULE_MINUTE))
     return int((t - now).total_seconds())

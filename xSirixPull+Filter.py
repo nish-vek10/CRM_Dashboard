@@ -79,12 +79,25 @@ def next_4h_tick_wallclock(now_dt):
         day = day + timedelta(days=1)
     return datetime.combine(day, datetime.min.time()).replace(hour=next_hour)
 
+def next_2h_tick_wallclock(now_dt):
+    """Return the next wall-clock 2h boundary (00, 02, 04, ..., 22)."""
+    next_hour = ((now_dt.hour // 2) + 1) * 2
+    day = now_dt.date()
+    if next_hour >= 24:
+        next_hour -= 24
+        day = day + timedelta(days=1)
+    return datetime.combine(day, datetime.min.time()).replace(hour=next_hour)
+
+
 
 API_URL = "https://restapi-real3.sirixtrader.com/api/UserStatus/GetUserTransactions"
 TOKEN = "t1_a7xeQOJPnfBzuCncH60yjLFu"
 
 # TESTING SWITCH
 TEST_MODE = True   # set to False for real weekly behavior
+
+# One-off kick: run a fetch immediately on startup, then continue the 2h schedule
+RUN_NOW_ON_START = True
 
 
 # === Weekly reset reminder (non-blocking) ===
@@ -93,12 +106,12 @@ def weekly_reset_reminder():
     if BASELINE_JSON.exists():
         mtime = datetime.fromtimestamp(BASELINE_JSON.stat().st_mtime)
         print(
-            f"[REMINDER] Weekly reset uses 'baseline_equity.json'. "
+            f"[REMINDER] Weekly reset uses 'baseline_equityNEW.json'. "
             f"File FOUND (last updated: {mtime:%Y-%m-%d %H:%M}).\n"
             f"          If this is the Monday 12:00 reset run, DELETE this file first."
         )
     else:
-        print("[INFO] 'baseline_equity.json' not found — fresh weekly baselines will be seeded this run.")
+        print("[INFO] 'baseline_equityNEW.json' not found — fresh weekly baselines will be seeded this run.")
 
 weekly_reset_reminder()
 
@@ -334,6 +347,26 @@ def run_once(mode, baseline_map, baseline_at_dt):
     purchases_df = pd.DataFrame(purchases_results)  # Purchases
     plan50k_df = pd.DataFrame(plan50k_results)      # 50K Balance
 
+    # --- NEW: sort Active by PctChange descending (only in 'update' mode) ---
+    if mode == "update":
+        pre_len = len(enriched_df)
+        # Coerce to numeric for safe sorting; None/invalid -> NaN
+        enriched_df["_sort"] = pd.to_numeric(enriched_df["PctChange"], errors="coerce")
+
+        # Stable sort so equal % keep their original relative order; NaN goes last
+        enriched_df = (
+            enriched_df
+            .sort_values(by="_sort", ascending=False, na_position="last", kind="mergesort")
+            .drop(columns="_sort")
+        )
+
+        same_len = (len(enriched_df) == pre_len)
+        top3 = enriched_df["PctChange"].head(3).tolist()
+        print(f"[SORT] Active sheet sorted by PctChange (desc, NaN/None last). "
+              f"Rows unchanged: {same_len}. Top3 PctChange: {top3}")
+    else:
+        print("[SORT] Baseline mode: PctChange not computed — skipping sort for Active.")
+
     with pd.ExcelWriter(OUTPUT_XLSX, engine="xlsxwriter") as writer:
         enriched_df.to_excel(writer, index=False, sheet_name="Active")
         blown_df.to_excel(writer, index=False, sheet_name="BlownUp")
@@ -390,8 +423,8 @@ if __name__ == "__main__":
                 baseline_at_dt = now
                 run_once(mode="baseline", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)
                 save_baseline(baseline_at_dt, baseline_map)
-            # After baseline (new or existing), schedule next 4h tick
-            next_run = next_4h_tick_wallclock(datetime.now())
+            # After baseline (new or existing), schedule next 2h/4h tick
+            next_run = next_2h_tick_wallclock(datetime.now())
         else:
             # REAL weekly behavior
             if need_new_week(baseline_at_dt, now):
@@ -403,14 +436,37 @@ if __name__ == "__main__":
                     baseline_at_dt = now
                     run_once(mode="baseline", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)
                     save_baseline(baseline_at_dt, baseline_map)
-                    next_run = next_4h_tick_wallclock(datetime.now())
+                    next_run = next_2h_tick_wallclock(datetime.now())
                 else:
                     secs = (target - now).total_seconds()
                     print(f"[SCHED] Waiting until Monday 12:00 to seed baseline (~{int(secs // 3600)}h).")
                     sleep(max(5.0, secs))
                     continue
             else:
-                next_run = next_4h_tick_wallclock(now)
+                next_run = next_2h_tick_wallclock(now)
+
+        # --- One-off immediate run (optional) ---
+        if RUN_NOW_ON_START:
+            print("[RUN-NOW] Performing one immediate fetch now (then resume 2h schedule).")
+            # Reload baseline in case it changed just now
+            baseline_at_dt, baseline_map = load_baseline()
+
+            if TEST_MODE and (baseline_at_dt is None or need_new_week(baseline_at_dt, datetime.now())):
+                # In TEST_MODE we allow seeding baseline immediately if missing/outdated
+                print("[RUN-NOW] TEST_MODE: baseline missing/outdated -> seeding baseline now.")
+                baseline_map = {}
+                baseline_at_dt = datetime.now()
+                run_once(mode="baseline", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)
+                save_baseline(baseline_at_dt, baseline_map)
+            else:
+                # Respect real Monday-12:00 rule; if baseline is missing, this update will just have PctChange=None
+                if need_new_week(baseline_at_dt, datetime.now()):
+                    print("[RUN-NOW] Baseline missing/outdated; running update anyway (PctChange may be NaN).")
+                run_once(mode="update", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)
+
+            # After the immediate run, reset the schedule to the next even-hour boundary
+            next_run = next_2h_tick_wallclock(datetime.now())
+            RUN_NOW_ON_START = False
 
         # Sleep until the next run time
         now = datetime.now()
@@ -434,5 +490,5 @@ if __name__ == "__main__":
             run_once(mode="baseline", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)
             save_baseline(baseline_at_dt, baseline_map)
         else:
-            # Regular 4-hour update
+            # Regular 2-hour update
             run_once(mode="update", baseline_map=baseline_map, baseline_at_dt=baseline_at_dt)

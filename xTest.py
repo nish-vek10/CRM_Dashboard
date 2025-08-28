@@ -4,6 +4,8 @@ import shutil
 import webbrowser
 from pathlib import Path
 import time
+import threading
+from datetime import datetime, timedelta
 
 # === Paths ===
 BASE_DIR = Path("C:/Users/anish/PycharmProjects/CRM_Dashboard")
@@ -12,20 +14,59 @@ REACT_DIR = BASE_DIR / "crm_dashboard"
 JSON_SOURCE = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput/crm_sirix_enrichedNEW.json")
 JSON_DEST = REACT_DIR / "public" / "crm_sirix_enrichedNEW.json"
 
+# === Utilities ===
+def copy_json_once():
+    try:
+        os.makedirs(REACT_DIR / "public", exist_ok=True)
+        shutil.copy(JSON_SOURCE, JSON_DEST)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[SYNC] Copied latest JSON to public at {ts}.")
+    except Exception as e:
+        print(f"[SYNC][ERROR] {e}")
+
+def next_even_hour_30(now=None):
+    """Return the next wall-clock time at an EVEN hour exactly :30 (00:30, 02:30, ..., 22:30)."""
+    if now is None:
+        now = datetime.now()
+    t = now.replace(second=0, microsecond=0)
+
+    # If we're before :30 in an even hour, target is this hour :30
+    if t.hour % 2 == 0 and t.minute < 30:
+        return t.replace(minute=30)
+
+    # Otherwise move to the next even hour and set :30
+    # If we're currently in an odd hour -> +1 hour gets us to even
+    # If we're in an even hour but past :30 -> +2 hours to the next even hour
+    add_hours = 1 if (t.hour % 2 == 1) else 2
+    candidate = (t + timedelta(hours=add_hours)).replace(minute=30)
+    return candidate
+
+def scheduler_loop():
+    """Continuously re-copy JSON at every even hour :30 so the dashboard sees fresh data ~3 mins after your pull ends."""
+    while True:
+        target = next_even_hour_30()
+        delta = (target - datetime.now()).total_seconds()
+        hh = int(delta // 3600)
+        mm = int((delta % 3600) // 60)
+        ss = int(delta % 60)
+        print(f"[SCHED] Next JSON sync at {target} (in {hh:02d}:{mm:02d}:{ss:02d}).")
+        time.sleep(max(1, int(delta)))
+        copy_json_once()
+
 # === Ensure React App Exists ===
 if not REACT_DIR.exists():
     print("[OK] Creating new React app...")
     subprocess.run(["npx", "create-react-app", "crm_dashboard"], cwd=BASE_DIR, shell=True)
 
-# === Copy JSON ===
+# === Initial JSON copy ===
 print("[OK] Copying JSON data...")
-os.makedirs(REACT_DIR / "public", exist_ok=True)
-shutil.copy(JSON_SOURCE, JSON_DEST)
+copy_json_once()
 
 # === Write App.js ===
+# Frontend will now re-fetch at the SAME cadence: even-hour :30.
 APP_JS = REACT_DIR / "src" / "App.js"
 APP_JS.write_text("""\
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "./App.css";
 
 // === Font + Animations (injected) ===
@@ -110,10 +151,10 @@ function getFlagOnly(countryName) {
   if (!code) return "";
   return (
     <img
-      src={`https://flagcdn.com/w40/${code}.png`}
+      src={'https://flagcdn.com/w40/' + code + '.png'}
       title={countryName || ""}
       alt={countryName || ""}
-      style={{ 
+      style={{
         width: "38px",
         height: "28px",
         objectFit: "cover",
@@ -129,8 +170,8 @@ function shortName(full) {
   const parts = String(full).trim().split(/\\s+/).filter(Boolean);
   if (parts.length === 0) return "";
   const capWord = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-  const first = capWord(parts[0]);                 // Manny
-  const last = parts[parts.length - 1] || "";      // H.
+  const first = capWord(parts[0]);
+  const last = parts[parts.length - 1] || "";
   const lastInitial = last ? last[0].toUpperCase() + "." : "";
   return lastInitial ? `${first} ${lastInitial}` : first;
 }
@@ -143,10 +184,10 @@ const rowStyleForRank = (r) => {
   return {};
 };
 const rowHeightForRank = (r) => {
-  if (r === 0) return 45; // top 1
-  if (r === 1) return 43; // #2
-  if (r === 2) return 41; // #3
-  return 42;              // everyone else
+  if (r === 0) return 45;
+  if (r === 1) return 43;
+  if (r === 2) return 41;
+  return 42;
 };
 const accentForRank = (r) => {
   if (r === 0) return "#F4C430";
@@ -155,102 +196,85 @@ const accentForRank = (r) => {
   return "transparent";
 };
 const rankBadge = (r) => {
-  if (r === 0) return <span style={{ fontWeight: 800, fontSize: "20px" }}>🥇</span>;
-  if (r === 1) return <span style={{ fontWeight: 800, fontSize: "20px" }}>🥈</span>;
-  if (r === 2) return <span style={{ fontWeight: 800, fontSize: "20px" }}>🥉</span>;
+  if (r === 0) return <span style={{ fontWeight: 800, fontSize: "22px" }}>🥇</span>;
+  if (r === 1) return <span style={{ fontWeight: 800, fontSize: "22px" }}>🥈</span>;
+  if (r === 2) return <span style={{ fontWeight: 800, fontSize: "22px" }}>🥉</span>;
   return null;
 };
+
+// === Schedule helper: next EVEN hour :30 ===
+function msUntilNextEvenHour30(now = new Date()) {
+  const t = new Date(now);
+  t.setSeconds(0, 0);
+
+  if (t.getHours() % 2 === 0 && t.getMinutes() < 30) {
+    const cand = new Date(t);
+    cand.setMinutes(30, 0, 0);
+    return cand - now;
+  }
+  const addHours = (t.getHours() % 2 === 1) ? 1 : 2;
+  const cand = new Date(t.getTime() + addHours * 3600 * 1000);
+  cand.setMinutes(30, 0, 0);
+  return cand - now;
+}
 
 function App() {
   const [originalData, setOriginalData] = useState([]);
   const [data, setData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 100;
 
-  // Countdown state
   const [target, setTarget] = useState(getNextResetTarget());
   const [tleft, setTleft] = useState(diffToDHMS(target));
 
-  // Prize map for GLOBAL ranks (1..10)
   const prizeMap = {
-    1: "$10,000 Funded Account",
-    2: "$5,000 Funded Account",
-    3: "$2,500 Funded Account",
-    4: "$1,000 Instant Funded Account",
-    5: "$1,000 Instant Funded Account",
-    6: "$1,000 Instant Funded Account",
-    7: "$1,000 Instant Funded Account",
-    8: "$1,000 Instant Funded Account",
-    9: "$1,000 Instant Funded Account",
-    10: "$1,000 Instant Funded Account",
+    1: "$10,000 Funded Account + $250 Cash",
+    2: "$5,000 Funded Account + $150 Cash",
+    3: "$2,500 Funded Account + $75 Cash",
+    4: "$1,000 Instant Funded Upgrade",
+    5: "$1,000 Instant Funded Upgrade",
+    6: "$1,000 Instant Funded Upgrade",
+    7: "$1,000 Instant Funded Upgrade",
+    8: "$1,000 Instant Funded Upgrade",
+    9: "$1,000 Instant Funded Upgrade",
+    10: "$1,000 Instant Funded Upgrade",
   };
 
-  // --------- NEW: data loader + scheduler ---------
-  // Reusable loader (with cache-busting)
   async function loadData() {
     try {
-      const res = await fetch(`/crm_sirix_enrichedNEW.json?ts=${Date.now()}`);
+      const res = await fetch('/crm_sirix_enrichedNEW.json?ts=' + Date.now());
       if (!res.ok) throw new Error("Failed to load JSON");
       const json = await res.json();
-      const sorted = [...json].sort((a, b) => {
-        const A = numVal(a["PctChange"]);
-        const B = numVal(b["PctChange"]);
-        if (A === null && B === null) return 0;
-        if (A === null) return 1;
-        if (B === null) return -1;
-        return B - A;
-      });
+      // JSON is already pre-sorted server-side.
       setOriginalData(json);
-      setData(sorted);
+      setData(json);
     } catch (e) {
       setOriginalData([]);
       setData([]);
     }
   }
 
-  // compute ms until next 00:30/04:30/08:30/12:30/16:30/20:30
-  function msUntilNextScheduledHalfHour() {
-    const now = new Date();
-    const scheduleHours = [0, 4, 8, 12, 16, 20];
-    for (let i = 0; i < scheduleHours.length; i++) {
-      const h = scheduleHours[i];
-      const t = new Date(now);
-      t.setHours(h, 30, 0, 0); // h:30:00.000
-      if (t > now) return t - now;
-    }
-    // none left today -> next day 00:30
-    const nxt = new Date(now);
-    nxt.setDate(now.getDate() + 1);
-    nxt.setHours(0, 30, 0, 0);
-    return nxt - now;
-  }
-
-  // Load once on mount
   useEffect(() => {
     loadData();
   }, []);
 
-  // Schedule refresh exactly at those times
+  // Re-fetch at every even hour :30
   useEffect(() => {
     let cancelled = false;
     let timeoutId;
 
-    async function arm() {
-      const ms = msUntilNextScheduledHalfHour();
+    function arm() {
+      const ms = msUntilNextEvenHour30();
       timeoutId = setTimeout(async () => {
         if (cancelled) return;
         await loadData();
-        arm(); // arm again for the following slot
+        arm(); // re-arm
       }, ms);
     }
-
     arm();
     return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
   }, []);
-  // --------- /NEW ---------
 
-  // Live countdown tick
+  // Countdown tick
   useEffect(() => {
     const id = setInterval(() => {
       const now = new Date();
@@ -265,43 +289,40 @@ function App() {
     return () => clearInterval(id);
   }, [target]);
 
-  // Search (keeps sort by % desc)
+  const globalRankById = useMemo(() => {
+    const m = Object.create(null);
+    for (let i = 0; i < originalData.length; i++) {
+      const id = String(originalData[i]["ACCOUNT ID"] ?? "");
+      if (id) m[id] = i;
+    }
+    return m;
+  }, [originalData]);
+
   const handleSearch = (e) => {
     const q = e.target.value.toLowerCase();
     setSearchQuery(q);
-    const filtered = originalData
-      .filter(row => Object.values(row).some(val => String(val ?? "").toLowerCase().includes(q)))
-      .sort((a, b) => {
-        const A = numVal(a["PctChange"]);
-        const B = numVal(b["PctChange"]);
-        if (A === null && B === null) return 0;
-        if (A === null) return 1;
-        if (B === null) return -1;
-        return B - A;
-      });
+    if (!q) { setData(originalData); return; }
+    const filtered = originalData.filter(row =>
+      Object.values(row).some(val => String(val ?? "").toLowerCase().includes(q))
+    );
     setData(filtered);
-    setCurrentPage(1);
   };
 
-  // Paging
-  const totalPages = Math.max(1, Math.ceil(data.length / rowsPerPage));
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedData = data.slice(startIndex, startIndex + rowsPerPage);
-  const goToPage = (page) => setCurrentPage(Math.max(1, Math.min(totalPages, page)));
+  const top30Data = useMemo(() => originalData.slice(0, 30), [originalData]);
+  const rowsToRender = useMemo(
+    () => (searchQuery ? data : top30Data),
+    [searchQuery, data, top30Data]
+  );
 
-  // Layout helpers (make center a bit wider by increasing maxWidth)
   const centerWrap = { maxWidth: 1300, margin: "0 auto" };
   const gradientTheadStyle = {
     background: "linear-gradient(135deg, #0f0f0f 0%, #222 60%, #d4af37 100%)",
     color: "#fff"
   };
-
-  // PRIZES shows first 10 rows of the CURRENT PAGE (aligns heights)
-  const visibleForPrizes = paginatedData.slice(0, 10);
+  const visibleForPrizes = top30Data.slice(0, 10);
 
   return (
     <div style={{ padding: "20px", fontFamily: "'Segoe UI', sans-serif", background: "#fafafa" }}>
-      {/* Title */}
       <h1
         style={{
           fontSize: "3.0rem",
@@ -323,7 +344,6 @@ function App() {
         E2T WORLD CUP COMPETITION
       </h1>
 
-      {/* Shared top bar (ABOVE TABLES) */}
       <div style={{ ...centerWrap }}>
         <div style={{ marginBottom: "16px", display: "flex", gap: "12px", alignItems: "center", justifyContent: "center" }}>
           <input
@@ -345,9 +365,8 @@ function App() {
         </div>
       </div>
 
-      {/* PRIZES (left) + LEADERBOARD (center) + COUNTDOWN (right) */}
       <div style={{ display: "flex", gap: 18, alignItems: "flex-start", ...centerWrap }}>
-        {/* PRIZES table */}
+        {/* PRIZES */}
         <div style={{ flex: "0 0 260px" }}>
           <table
             style={{
@@ -371,16 +390,24 @@ function App() {
                 <tr><td colSpan={2} style={{ padding: 10, color: "#777" }}>No data</td></tr>
               )}
               {visibleForPrizes.map((row, idx) => {
-                const globalRank = startIndex + idx; // 0-based global
+                const globalRank = idx;
                 const zebra = { background: idx % 2 === 0 ? "#ffffff" : "#fafafa" };
                 const highlight = rowStyleForRank(globalRank);
                 const rowStyle = { ...zebra, ...highlight };
-                const prize = prizeMap[globalRank + 1] || "";
+                const prize = {
+                  1: "$10,000 Funded Account + $250 Cash",
+                  2: "$5,000 Funded Account + $150 Cash",
+                  3: "$2,500 Funded Account + $75 Cash",
+                  4: "$1,000 Instant Funded Upgrade",
+                  5: "$1,000 Instant Funded Upgrade",
+                  6: "$1,000 Instant Funded Upgrade",
+                  7: "$1,000 Instant Funded Upgrade",
+                  8: "$1,000 Instant Funded Upgrade",
+                  9: "$1,000 Instant Funded Upgrade",
+                  10: "$1,000 Instant Funded Upgrade",
+                }[globalRank + 1] || "";
 
-                // fixed row height to match leaderboard
                 const rh = rowHeightForRank(globalRank);
-
-                // optional slight font boost for top-3
                 let fs = "13px", fw = 500;
                 if (globalRank === 0) { fs = "15px"; fw = 800; }
                 else if (globalRank === 1) { fs = "14px"; fw = 700; }
@@ -417,7 +444,7 @@ function App() {
           </table>
         </div>
 
-        {/* LEADERBOARD table (center, a bit wider due to larger maxWidth) */}
+        {/* LEADERBOARD */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ overflowX: "auto", maxHeight: "70vh", overflowY: "auto" }}>
             <table
@@ -447,15 +474,17 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.length === 0 ? (
+                {rowsToRender.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: 20, color: "#777" }}>
                       No records found.
                     </td>
                   </tr>
                 ) : (
-                  paginatedData.map((row, rowIndex) => {
-                    const globalRank = startIndex + rowIndex;
+                  rowsToRender.map((row, rowIndex) => {
+                    const id = String(row["ACCOUNT ID"] ?? "");
+                    const globalRank = globalRankById[id];
+                    const displayRank = (globalRank >= 0 && Number.isInteger(globalRank)) ? globalRank + 1 : "";
 
                     const zebra = { background: rowIndex % 2 === 0 ? "#ffffff" : "#f9f9f9" };
                     const highlight = rowStyleForRank(globalRank);
@@ -479,10 +508,10 @@ function App() {
                     const cellBase = { whiteSpace: "nowrap", fontSize: rowFontSize, fontWeight: rowFontWeight };
 
                     return (
-                      <tr key={rowIndex} style={rowStyle}>
+                      <tr key={id || rowIndex} style={rowStyle}>
                         <td style={{ ...cellBase, fontWeight: 800, borderLeft: `8px solid ${leftAccent}` }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            {rankBadge(globalRank) || (globalRank + 1)}
+                            {rankBadge(globalRank) || displayRank}
                           </span>
                         </td>
                         <td style={cellBase}>{shortName(row["CUSTOMER NAME"])}</td>
@@ -500,21 +529,9 @@ function App() {
               </tbody>
             </table>
           </div>
-
-          <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: 12 }}>
-            <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} style={{ padding: "6px 10px" }}>
-              Prev
-            </button>
-            <span style={{ margin: "0 10px" }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} style={{ padding: "6px 10px" }}>
-              Next
-            </button>
-          </div>
         </div>
 
-        {/* COUNTDOWN (right) */}
+        {/* COUNTDOWN */}
         <div style={{ flex: "0 0 260px" }}>
           <table
             style={{
@@ -575,3 +592,14 @@ subprocess.Popen(
 # === Open Browser ===
 time.sleep(5)
 webbrowser.open("http://localhost:3001")
+
+# === Start the scheduler (runs forever, even-hour :30) ===
+t = threading.Thread(target=scheduler_loop, daemon=True)
+t.start()
+
+# Keep the launcher alive so the scheduler can run
+try:
+    while True:
+        time.sleep(3600)
+except KeyboardInterrupt:
+    print("\n[EXIT] Stopping dashboard launcher.")
