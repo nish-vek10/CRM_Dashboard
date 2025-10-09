@@ -5,7 +5,7 @@ import urllib
 
 
 # === 1. Output folder path  ===
-output_folder = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput")  # Directory
+output_folder = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput/comparison/new")  # Directory
 output_folder.mkdir(parents=True, exist_ok=True)
 
 # === 2. Tables to export ===
