@@ -10,10 +10,10 @@ from collections import Counter
 import os
 
 # === Config ===
-INPUT_XLSX = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput/Lv_tpaccount.xlsx"
-OUTPUT_DIR = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput")
-OUTPUT_JSON = OUTPUT_DIR / "crm_sirix_enrichedNEW.json"
-OUTPUT_XLSX = OUTPUT_DIR / "crm_sirix_enrichedNEW.xlsx"
+INPUT_XLSX = "C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput/supabase-Monday/Lv_tpaccount.xlsx"
+OUTPUT_DIR = Path("C:/Users/anish/OneDrive/Desktop/Anish/CRM API/CRM Dashboard/finalCleanOutput/supabase-Monday")
+OUTPUT_JSON = OUTPUT_DIR / "Xcrm_sirix_enrichedNEW.json"
+OUTPUT_XLSX = OUTPUT_DIR / "Xcrm_sirix_enrichedNEW.xlsx"
 BASELINE_JSON = OUTPUT_DIR / "baseline_equityNEW.json"
 
 # ---------------- Baseline helpers ----------------
